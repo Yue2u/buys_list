@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Список покупок</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
+  <style>
+    ul {
+     list-style-type: none; /* Убирает буллиты */
+    }
+   </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-success">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Список покупок</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="#">Личный кабинет</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-4">
+      <h2>Списки</h2>
+      <ul class="list-group">
+        {% for buy_list in buy_lists %}
+        <li class="list-group-item">
+            <a href="#" onclick="setUpBuyList(this);"> id: {{buy_list.id}} | {{buy_list.title}} | {{buy_list.items_set.count}} items </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-md-8">
+      <form action="#">
+        <div class="form-group">
+          <label for="list_name">Название списка</label>
+          <input type="text" class="form-control" id="list_name" placeholder="Название списка">
+        </div>
+        <div class="form-group">
+            <label for="sort">Сортировать по</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="sort" id="sort-none" value="none" checked>
+              <label class="form-check-label" for="sort-none">Не сортировать</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="sort" id="sort-name" value="name">
+              <label class="form-check-label" for="sort-name">По наименованию</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="sort" id="sort-price" value="price">
+              <label class="form-check-label" for="sort-price">По цене</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="sort" id="sort-quantity" value="quantity">
+              <label class="form-check-label" for="sort-quantity">По количеству</label>
+            </div>
+          </div>
+        <div class="form-group" method="POST">
+          <label for="elements">Элементы</label>
+          <ul class="list-group" id="elements">
+          </ul>
+        </div>
+        <div class="form-group">
+          <button type="button" class="btn btn-success" id="add-item">Добавить</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+      <div class="form-group">
+        <label for="total">Итого:</label>
+        <input type="text" class="form-control" id="total" readonly>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.min.js" integrity="sha384-7VPbUDkoPSGFnVtYi0QogXtr74QeVeeIs99Qfg5YCF+TidwNdjvaKZX19NZ/e6oz" crossorigin="anonymous"></script>
+<script>
+    function removeContainer(sender){
+        sender.parentElement.parentElement.parentElement.parentElement.remove();
+        updateTotal();
+    }
+
+    function setUpBuyList(sender){
+        const id = sender.innerHTML.match(/ id: ([\d]+)/)[1];
+
+        const csrftoken = getCookie('csrftoken');
+        // Отправляем POST-запрос на сервер
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/buys_list/" + id);
+        xhr.onload = () => {
+            // Если запрос выполнен успешно
+            if (xhr.status === 200) {
+              // Получаем данные из ответа сервера
+              document.getElementById("elements").innerHTML = "";
+              const buyList = JSON.parse(xhr.responseText);
+              // Перебираем элементы списка покупок
+              document.getElementById("list_name").value = buyList.title;
+
+              for (const buy_item of buyList.items_set) {
+                // Добавляем элемент в список
+                let item = document.createElement("li");
+                var id1 = "id" + Math.random().toString(16).slice(2);
+                var id2 = "id" + Math.random().toString(16).slice(2);
+                var id3 = "id" + Math.random().toString(16).slice(2);
+                item.className = "list-group-item";
+                item.innerHTML = `
+                <div class="container">
+                    <div class="row">
+                        <div class="col-6">
+                            <label for="${id1}">Название товара</label>
+                            <input type="text" class="form-control" id="${id1}" name="name" placeholder="Название товара" value="${buy_item.title}" onchange="updateTotal();">
+                        </div>
+                        <div class="col">
+                            <label for="${id2}">Цена</label>
+                            <input type="number" class="form-control data-input" id="${id2}" name="price" value="${buy_item.price}" onchange="updateTotal();">
+                        </div>
+                        <div class="col">
+                            <label for="${id3}">Количество</label>
+                            <input type="number" class="form-control data-input" id="${id3}" name="quantity" value="${buy_item.quantity}" onchange="updateTotal();">
+                        </div>
+                        <div class="col-2">
+                            <input type="button" class="delButton" id="${id3}" name="delete" value="Удалить" onclick="removeContainer(this);">
+                        </div>
+                    </div>
+                </div>
+                `;
+              
+                // Добавляем новый элемент в форму
+                document.getElementById("elements").appendChild(item);
+            
+                // Устанавливаем сумму в поле "Итого"
+                //document.getElementById("total").value = sum;
+
+              }
+              updateTotal();
+            } else {
+              // Ошибка
+              console.error("Ошибка при получении списка покупок: " + xhr.statusText);
+            }
+          };
+          xhr.send();
+
+
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function onAddItemClick() {
+        // Создаем новый элемент списка
+        let item = document.createElement("li");
+        var id1 = "id" + Math.random().toString(16).slice(2);
+        var id2 = "id" + Math.random().toString(16).slice(2);
+        var id3 = "id" + Math.random().toString(16).slice(2);
+        item.className = "list-group-item";
+        item.innerHTML = `
+        <div class="container">
+            <div class="row">
+                <div class="col-6">
+                    <label for="${id1}">Название товара</label>
+                    <input type="text" class="form-control" id="${id1}" name="name" placeholder="Название товара" onchange="updateTotal();">
+                </div>
+                <div class="col">
+                    <label for="${id2}">Цена</label>
+                    <input type="number" class="form-control data-input" id="${id2}" name="price" value="0" onchange="updateTotal();">
+                </div>
+                <div class="col">
+                    <label for="${id3}">Количество</label>
+                    <input type="number" class="form-control data-input" id="${id3}" name="quantity" value="0" onchange="updateTotal();">
+                </div>
+                <div class="col-2">
+                    <input type="button" class="delButton" id="${id3}" name="delete" value="Удалить" onclick="removeContainer(this);">
+                </div>
+            </div>
+        </div>
+        `;
+      
+        // Добавляем новый элемент в форму
+        document.getElementById("elements").appendChild(item);
+    
+        // Устанавливаем сумму в поле "Итого"
+        //document.getElementById("total").value = sum;
+        updateTotal();
+      }
+      
+      // Функция, обновляющая сумму
+      function updateTotal() {
+        // Сумма всех элементов
+        let total = 0;
+      
+        // Перебираем все строки формы
+        const elements = document.getElementById("elements").querySelectorAll(".list-group-item");
+        for (const element of elements) {
+          // Получаем цену и количество товара из строки
+          const price = parseFloat(element.querySelector("input[name='price']").value);
+          const quantity = parseInt(element.querySelector("input[name='quantity']").value);
+      
+          // Рассчитываем произведение цены и количества
+          const product = price * quantity;
+      
+          // Добавляем произведение к сумме
+          total += product;
+        }
+      
+        // Обновляем значение поля "Итого"
+        document.getElementById("total").value = total;
+      }
+
+
+      function getItems() {
+        const elements = document.getElementById("elements").querySelectorAll(".list-group-item");
+        const items = [];
+        for (const element of elements) {
+          const title = element.querySelector("input[name='name']").value;
+          const price = parseFloat(element.querySelector("input[name='price']").value);
+          const quantity = parseInt(element.querySelector("input[name='quantity']").value);
+          if (title == ""){
+            alert("Product title cant be empty!");
+            return;
+          }
+          items.push({
+            title,
+            price,
+            quantity,
+          });
+        }
+        return items;
+      }
+
+
+      // Функция, выполняемая при клике на кнопку "Сохранить"
+      function onSubmitClick() {
+        // Получаем данные из формы
+        const items_set = getItems();
+        if (document.getElementById("list_name").value == ""){
+            alert("Buy list title cant be empty!");
+            return;
+        }
+        const data = {
+          title: document.getElementById("list_name").value,
+          items_set,
+          sort_type: document.querySelector("input[name='sort']:checked").value
+        };
+      
+        console.log(data);
+
+        const csrftoken = getCookie('csrftoken');
+        // Отправляем POST-запрос на сервер
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/buys_list/");
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        xhr.send(JSON.stringify(data));
+      }
+      
+      // Подключаем обработчики события клика к кнопкам
+      document.querySelector("#add-item").addEventListener("click", onAddItemClick);
+      document.querySelector("form").addEventListener("submit", onSubmitClick);
+</script>
+</body>
+</html>
